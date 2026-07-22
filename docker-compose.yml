@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: discord_clone
+    # Les ports ne sont pas exposés à l'hôte pour des raisons de sécurité en production.
+    # Ils restent accessibles via le réseau interne Docker (discord_network).
+    # En développement, décommentez les lignes suivantes si besoin d'accès direct.
+    # ports:
+    #   - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - discord_network
+
+  mongo:
+    image: mongo:6-jammy
+    # ports:
+    #   - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - discord_network
+
+  redis:
+    image: redis:7-alpine
+    # ports:
+    #   - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - discord_network
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - PORT=3000
+      - NODE_ENV=development
+      - FRONTEND_URL=http://localhost:5173
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/discord_clone?schema=public
+      - MONGO_URI=mongodb://mongo:27017/discord_clone
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - mongo
+      - redis
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - discord_network
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - discord_network
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
+
+networks:
+  discord_network:
+    driver: bridge
