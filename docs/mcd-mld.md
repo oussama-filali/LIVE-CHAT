@@ -120,7 +120,5 @@ jointures relationnelles strictes sur cette entité.
 
 ## 4. Hors périmètre actuel (à ne pas coder maintenant)
 
-Pour rester minutieux à 4 et éviter la sur-ingénierie : messages privés (DM),
-invitations par lien, bannissement/kick, réactions — non modélisés tant qu'ils
-ne sont pas demandés. Le MCD/MLD ci-dessus couvre exactement ce que `docker-compose.yml`,
+ Le MCD/MLD ci-dessus couvre exactement ce que `docker-compose.yml`,
 `schema.prisma` et les sockets `/chat` `/voice` déjà en place sont censés servir.
