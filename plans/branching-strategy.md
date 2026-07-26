@@ -33,8 +33,8 @@ minimiser les conflits de merge à 4 personnes.
 
 | Branche | Domaine | Fichiers principaux |
 |---|---|---|
-| `dev-oussama` | Auth + Users/Servers/Channels (API REST) | `backend/src/controllers/*`, `routes/*`, `repositories/{user,server,channel}.repository.js` |
-| `dev-<membre2>` | Chat temps réel | `backend/src/sockets/chat.js`, `repositories/message.repository.js`, modèle Mongoose `Message` |
+| `dev-oussama` | Auth + Users/Servers/Channels (API REST) | `backend/src/controllers/*`, `routes/*`, `services/auth.service.js` |
+| `dev-<membre2>` | Chat temps réel | `backend/src/sockets/chat.js`, modèle Mongoose `Message` |
 | `dev-<membre3>` | Voix/WebRTC + présence | `backend/src/sockets/webrtc.js`, logique de présence Redis |
 | `dev-<membre4>` | Frontend | `frontend/src/**` (pages, composants, store, routing) |
 

@@ -36,23 +36,26 @@
 ## Développement — fichier par fichier, par domaine
 
 ### A. Auth / Utilisateurs / Serveurs / Canaux — `dev-oussama`
-- [ ] `backend/src/repositories/user.repository.js`
-- [ ] `backend/src/services/auth.service.js` (hash bcrypt, génération JWT access + refresh)
+- [ ] `backend/src/services/auth.service.js` (hash bcrypt, génération/vérification JWT
+      access + refresh) — pure logique métier, aucune dépendance Express
 - [ ] `backend/src/controllers/auth.controller.js` + `routes/auth.routes.js`
-      (register, login, refresh, logout) + validation Zod des payloads
+      (register, login, refresh, logout) + validation Zod des payloads —
+      le controller appelle Prisma (`prisma.user.*`) directement pour lire/écrire,
+      et délègue le hash/JWT à `auth.service.js`
 - [ ] `backend/src/controllers/server.controller.js` + `routes/server.routes.js`
+      (CRUD via Prisma directement, pas de couche intermédiaire)
 - [ ] `backend/src/controllers/channel.controller.js` + `routes/channel.routes.js`
-- [ ] Middleware RBAC (vérifie `Membership.role` avant une action sensible :
-      créer un canal, changer un rôle, etc.)
+      (CRUD via Prisma directement)
+- [ ] `backend/src/middlewares/rbac.middleware.js` (vérifie `Membership.role` avant
+      une action sensible : créer un canal, changer un rôle, etc.)
 - [ ] Brancher les routes dans `backend/src/server.js` (lignes actuellement commentées)
 
 ### B. Chat temps réel — `dev-<membre2>`
 - [ ] Modèle Mongoose `Message` (channelId, authorId, content, attachments, edited, createdAt)
-- [ ] `backend/src/repositories/message.repository.js`
 - [ ] Authentifier le socket `/chat` (vérifier le JWT au handshake, pas seulement à la connexion)
-- [ ] Compléter `backend/src/sockets/chat.js` : persister le message reçu puis
-      diffuser à la room correspondante
-- [ ] Route REST `GET /channels/:id/messages` (historique paginé)
+- [ ] Compléter `backend/src/sockets/chat.js` : persister le message via le modèle
+      Mongoose `Message` directement, puis diffuser à la room correspondante
+- [ ] Route REST `GET /channels/:id/messages` (historique paginé, `Message.find()` direct)
 
 ### C. Voix / WebRTC + présence — `dev-<membre3>`
 - [ ] Authentifier le socket `/voice`
@@ -71,15 +74,18 @@
 
 ### E. Transverse (peut être fait par n'importe qui, à répartir)
 - [ ] Config ESLint (backend + frontend)
-- [ ] Tests unitaires de base (au minimum `auth.service` et `message.repository`)
+- [ ] Tests unitaires de base (au minimum `auth.service` et le modèle Mongoose `Message`)
 - [ ] Remplir `docs/socket-events.md` (contrat d'événements socket partagé entre les 4)
 - [ ] Générer les vrais schémas `docs/mcd.png`, `docs/architecture.png`,
       `docs/webrtc-sequence.png` à partir des sources Mermaid fournies
 
 ## Règles de code à respecter (rappel)
 
-- Une seule responsabilité par fichier : `controller` ≠ `service` ≠ `repository`
+- Une seule responsabilité par fichier : `controller` (HTTP + appel direct au
+  modèle Prisma/Mongoose) ≠ `service` (logique métier réutilisable : hash, JWT,
+  calculs) — pas de couche "repository" en plus, Prisma/Mongoose sont déjà
+  l'accès aux données
 - Toute route sensible passe par `requireAuth` (+ middleware RBAC si nécessaire)
 - Toute entrée utilisateur est validée par Zod avant traitement
 - Pas de logique métier directement dans les handlers de socket → déléguer aux
-  services/repositories
+  services, et accéder aux données via le modèle directement
