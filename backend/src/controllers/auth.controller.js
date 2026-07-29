@@ -6,7 +6,6 @@ import {
     comparePassword, 
     generateAccessToken, 
     generateRefreshToken, 
-    verifyAccessToken, 
     verifyRefreshToken
 
 } from '../services/auth.service.js';
