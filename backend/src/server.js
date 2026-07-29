@@ -18,7 +18,7 @@ import { setupChatSocket } from './sockets/chat.js';
 import { setupWebRTCSocket } from './sockets/webrtc.js';
 
 // Import Routes
-import authRoutes from './routes/auth.routes.js';
+import authRoutes from './modules/auth/auth.routes.js';
 
 const app = express();
 const server = http.createServer(app);
