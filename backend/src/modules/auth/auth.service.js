@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import {env} from '../config/env.js';
+import {env} from '../../config/env.js';
 
 const SALT_ROUNDS = 12;
 const ACCESS_TOKEN_TTL = '15m';
@@ -45,8 +45,8 @@ const verifyToken = (token, secret, expectedType) => {
   return decoded;
 };
 
-export const verifyAccessToken = (token) => 
+export const verifyAccessToken = (token) =>
     verifyToken(token, env.JWT_SECRET, 'access');
 
-export const verifyRefreshToken = (token) => 
+export const verifyRefreshToken = (token) =>
     verifyToken(token, env.JWT_REFRESH_SECRET, 'refresh');

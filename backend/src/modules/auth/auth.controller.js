@@ -1,14 +1,14 @@
 import {z} from 'zod';
-import {prisma} from '../config/postgres.js';
-import {env} from '../config/env.js';
+import {prisma} from '../../config/postgres.js';
+import {env} from '../../config/env.js';
 import {
-    hashPassword, 
-    comparePassword, 
-    generateAccessToken, 
-    generateRefreshToken, 
+    hashPassword,
+    comparePassword,
+    generateAccessToken,
+    generateRefreshToken,
     verifyRefreshToken
 
-} from '../services/auth.service.js';
+} from './auth.service.js';
 
 //validation des entrées de l'utilisateur
 const registerSchema = z.object({
@@ -33,7 +33,7 @@ const cookieOptions = {
 const ACCESS_TOKEN_COOKIE_MAX_AGE = 15 * 60 * 1000;
 
 // 7 days
-const REFRESH_TOKEN_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; 
+const REFRESH_TOKEN_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 // fonction privée qui pose les 2 cookies d'authentification
 const setAuthCookies = (res, userId) => {
@@ -60,7 +60,7 @@ export const register = async (req, res) => {
 
         const existingUser = await prisma.user.findFirst({
          where: { OR: [{ email }, { username }] }
-            
+
         });
 
         if (existingUser) {
@@ -81,7 +81,7 @@ export const register = async (req, res) => {
 
     }
 
-// login 
+// login
 export const login = async (req, res) => {
     const parsed = loginSchema.safeParse(req.body);
 
@@ -123,7 +123,7 @@ export const refresh = (req, res) => {
 
 };
 
-// logout 
+// logout
 export const logout = (req, res) => {
     res.clearCookie('accessToken', cookieOptions);
     res.clearCookie('refreshToken', cookieOptions);
