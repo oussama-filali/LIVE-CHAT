@@ -45,3 +45,22 @@ Chaque branche correspond à un module fonctionnel indépendant du MCD/MLD
 Message (Mongo) de l'autre, présence/voix (Redis, éphémère) à part, et le
 Frontend qui consomme les trois. Ça permet à chacun d'avancer sans attendre
 les autres, et le merge dans `dev` "assemble" le projet complet.
+
+## Alignement avec le Gitflow de l'équipe
+
+L'équipe a formalisé un Gitflow classique (Vincent Driessen) en parallèle. Deux
+ajustements pour rester cohérent avec ce qui existe déjà (éviter de renommer/
+casser des branches déjà poussées) :
+
+- **`dev` reste `dev`** (pas de renommage en `develop`) — c'est le même rôle
+  d'intégration, juste un nom déjà en place sur GitHub.
+- **Branches par personne conservées** (`dev-<prenom>`) plutôt que `feature/*`
+  par tâche — déjà en place avec des commits poussés. Pour une nouvelle tâche
+  isolée qui ne rentre dans le domaine de personne, `feature/<nom>` reste une
+  option ponctuelle.
+
+Déjà respecté sans rien changer :
+- **Conventional Commits** (`feat(scope): ...`, `fix(scope): ...`, `docs: ...`,
+  `chore: ...`) — tous les commits jusqu'ici suivent ce format.
+- **Commits atomiques**, un par idée (service, controller, routes séparés).
+- **PR obligatoire** avant merge vers `dev`, revue par un autre membre.
