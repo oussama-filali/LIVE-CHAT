@@ -1,6 +1,6 @@
 import {Router} from 'express';
-import { register, login, logout, refresh } from '../controllers/auth.controller.js';
-import { authLimiter } from '../middlewares/rateLimiter.middleware.js';
+import { register, login, logout, refresh } from './auth.controller.js';
+import { authLimiter }  from '../../middlewares/rateLimiter.middleware.js';
 
 const router = Router();
 

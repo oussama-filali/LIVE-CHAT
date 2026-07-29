@@ -1,6 +1,6 @@
 import {z} from 'zod';
-import {prisma} from '../config/postgres.js';
-import {env} from '../config/env.js';
+import {prisma} from '../../config/postgres.js';
+import {env} from '../../config/env.js';
 import {
     hashPassword, 
     comparePassword, 
@@ -8,7 +8,7 @@ import {
     generateRefreshToken, 
     verifyRefreshToken
 
-} from '../services/auth.service.js';
+} from './auth.service.js';
 
 //validation des entrées de l'utilisateur
 const registerSchema = z.object({

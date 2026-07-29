@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import {env} from '../config/env.js';
+import {env} from '../../config/env.js';
 
 const SALT_ROUNDS = 12;
 const ACCESS_TOKEN_TTL = '15m';

@@ -1,4 +1,4 @@
-import { prisma } from '../config/postgres.js';
+import { prisma } from '../../config/postgres.js';
 
 // 1. Créer un serveur
 export const createServer = async (req, res) => {
@@ -63,7 +63,7 @@ export const joinServer = async (req, res) => {
   res.status(200).json({ message: 'Serveur rejoint !', server });
 };
 
-//  Récupérer les serveurs de utilisateur co
+// Récupérer les serveurs de l'utilisateur connecté
 export const getUserServers = async (req, res) => {
   const userId = req.user.sub;
 
@@ -79,7 +79,7 @@ export const getUserServers = async (req, res) => {
   res.status(200).json(memberships);
 };
 
-//  Créer un salon
+// Créer un salon
 export const createChannel = async (req, res) => {
   const { serverId } = req.params;
   const { name, type } = req.body;
@@ -99,7 +99,7 @@ export const createChannel = async (req, res) => {
   res.status(201).json(channel);
 };
 
-//  Modifier role
+// Modifier role
 export const updateMemberRole = async (req, res) => {
   const { serverId, targetUserId } = req.params;
   const { role } = req.body; // 'ADMIN' ou 'MEMBER'

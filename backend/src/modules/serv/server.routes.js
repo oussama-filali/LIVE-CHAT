@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { requireAuth } from '../middlewares/auth.middleware.js';
+import { requireAuth } from '../../middlewares/auth.middleware.js';
 import {
   createServer,
   joinServer,
   getUserServers,
   createChannel,
   updateMemberRole,
-} from '../controllers/server.controller.js';
+} from './server.controller.js';
 
 const router = Router();
 
