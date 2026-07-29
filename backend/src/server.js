@@ -19,6 +19,7 @@ import { setupWebRTCSocket } from './sockets/webrtc.js';
 
 // Import Routes
 import authRoutes from './routes/auth.routes.js';
+import serverRoutes from './routes/server.routes.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -47,7 +48,7 @@ app.use(cookieParser());
 app.use(globalLimiter);
 
 app.use('/api/auth', authRoutes);
-// app.use('/api/servers', serversRoutes);
+app.use('/api/servers', serverRoutes);
 // app.use('/api/channels', channelsRoutes);
 
 // Catch 404

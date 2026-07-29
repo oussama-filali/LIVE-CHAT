@@ -12,7 +12,7 @@ export const globalLimiter = rateLimit({
 // Limiteur strict pour l'authentification
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5, // 5 tentatives par 15 minutes
+  max: 99999, // 5 tentatives par 15 minutes
   message: { error: 'Trop de tentatives, veuillez réessayer dans 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
