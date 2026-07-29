@@ -17,6 +17,9 @@ import { errorHandler } from './middlewares/errorHandler.middleware.js';
 import { setupChatSocket } from './sockets/chat.js';
 import { setupWebRTCSocket } from './sockets/webrtc.js';
 
+// Import Routes
+import authRoutes from './routes/auth.routes.js';
+
 const app = express();
 const server = http.createServer(app);
 
@@ -43,8 +46,7 @@ app.use(cookieParser());
 // OWASP: Protection contre les attaques DDoS (basique) et brute force
 app.use(globalLimiter);
 
-// Routes (à remplacer par les vrais imports)
-// app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 // app.use('/api/servers', serversRoutes);
 // app.use('/api/channels', channelsRoutes);
 

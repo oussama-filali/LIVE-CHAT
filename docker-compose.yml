@@ -10,8 +10,8 @@ services:
     # Les ports ne sont pas exposés à l'hôte pour des raisons de sécurité en production.
     # Ils restent accessibles via le réseau interne Docker (discord_network).
     # En développement, décommentez les lignes suivantes si besoin d'accès direct.
-    # ports:
-    #   - "5432:5432"
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -19,8 +19,8 @@ services:
 
   mongo:
     image: mongo:6-jammy
-    # ports:
-    #   - "27017:27017"
+    ports:
+      - "27017:27017"
     volumes:
       - mongo_data:/data/db
     networks:
@@ -28,8 +28,8 @@ services:
 
   redis:
     image: redis:7-alpine
-    # ports:
-    #   - "6379:6379"
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
