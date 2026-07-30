@@ -1,6 +1,9 @@
+import { socketAuthMiddleware } from '../middlewares/socketAuth.middleware.js';
+
 export const setupWebRTCSocket = (io) => {
   const voiceNamespace = io.of('/voice');
 
+  voiceNamespace.use(socketAuthMiddleware);
   voiceNamespace.on('connection', (socket) => {
     console.log(`[Voice] Utilisateur connecté : ${socket.id}`);
 

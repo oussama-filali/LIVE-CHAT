@@ -1,7 +1,10 @@
+import { socketAuthMiddleware } from '../middlewares/socketAuth.middleware.js';
+
 export const setupChatSocket = (io) => {
   const chatNamespace = io.of('/chat');
 
-  // Middleware d'authentification Socket à rajouter plus tard
+  // Middleware d'authentification Socket fait
+  chatNamespace.use(socketAuthMiddleware);
   chatNamespace.on('connection', (socket) => {
     console.log(`[Chat] Utilisateur connecté : ${socket.id}`);
 
