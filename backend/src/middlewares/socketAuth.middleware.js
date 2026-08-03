@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
-import { env } from '../config/env.js';
 import cookie from 'cookie';
+import { verifyAccessToken } from '../modules/auth/auth.service.js';
+
 
 export const requireSocketAuth = (socket, next) => {
   try {
@@ -16,9 +16,10 @@ export const requireSocketAuth = (socket, next) => {
       return next(new Error('Authentification requise : Token manquant'));
     }
 
-    const decoded = jwt.verify(token, env.JWT_SECRET);
+// Vérification du token JWT
+    const decoded = verifyAccessToken(token);
     socket.user = decoded; // { sub: userId, type: 'access', ... }
-    
+
     next();
   } catch (err) {
     return next(new Error('Authentification échouée : Token invalide ou expiré'));
