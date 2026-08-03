@@ -1,23 +1,26 @@
-import { verifyAccessToken } from '../modules/auth/auth.service.js';
+import jwt from 'jsonwebtoken';
+import { env } from '../config/env.js';
+import cookie from 'cookie';
 
-const parseCookie = (cookieHeader, name) => {
-    if (!cookieHeader) return null;
-    const match = cookieHeader.split(';').map(cookie => cookie.trim()).find(cookie => cookie.startsWith(`${name}=`));
-    return match ? decodeURIComponent(match.split('=')[1]) : null;
-};
+export const requireSocketAuth = (socket, next) => {
+  try {
+    const cookieHeader = socket.handshake.headers.cookie;
+    if (!cookieHeader) {
+      return next(new Error('Authentification requise : Aucun cookie trouvé'));
+    }
 
-export const socketAuthMiddleware = (socket, next) => {
-    const token = parseCookie(socket.handshake.headers.cookie, 'accessToken');
+    const cookies = cookie.parse(cookieHeader);
+    const token = cookies.accessToken;
 
     if (!token) {
-        return next(new Error('Authentication requise'));
+      return next(new Error('Authentification requise : Token manquant'));
     }
 
-    try {
-        const decoded = verifyAccessToken(token);
-        socket.userId = decoded.sub; // Attache l'ID de l'utilisateur au socket pour une utilisation ultérieure 
-        next();
-    } catch (err) {
-        return next(new Error('Token invalide ou expiré'));
-    }
+    const decoded = jwt.verify(token, env.JWT_SECRET);
+    socket.user = decoded; // { sub: userId, type: 'access', ... }
+    
+    next();
+  } catch (err) {
+    return next(new Error('Authentification échouée : Token invalide ou expiré'));
+  }
 };
