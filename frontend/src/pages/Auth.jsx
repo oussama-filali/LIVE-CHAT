@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, MessageSquare } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 export default function Auth() {
   const [isSignIn, setIsSignIn] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
+
+  const login = useAuthStore((state) => state.login);
+  const register = useAuthStore((state) => state.register);
+  const error = useAuthStore((state) => state.error);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -15,12 +23,18 @@ export default function Auth() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSignIn) {
-      console.log('Connexion :', { email: formData.email, password: formData.password });
-    } else {
-      console.log('Inscription :', formData);
+    setIsSubmitting(true);
+
+    const result = isSignIn
+      ? await login({ email: formData.email, password: formData.password })
+      : await register(formData);
+
+    setIsSubmitting(false);
+
+    if (result.success) {
+      navigate('/');
     }
   };
 
@@ -141,15 +155,25 @@ export default function Auth() {
             </div>
           )}
 
+          {error && (
+            <div
+              className="text-xs rounded-lg px-3 py-2 border"
+              style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#f87171' }}
+            >
+              {error}
+            </div>
+          )}
+
           <button
             type="submit"
-            className="w-full text-white font-semibold py-3 rounded-lg transition-colors duration-200 mt-2 shadow-lg"
+            disabled={isSubmitting}
+            className="w-full text-white font-semibold py-3 rounded-lg transition-colors duration-200 mt-2 shadow-lg disabled:opacity-60"
             style={{ 
               backgroundColor: '#5b6cf9',
               boxShadow: '0 8px 20px -4px rgba(91, 108, 249, 0.4)' 
             }}
           >
-            {isSignIn ? 'Sign In' : 'Create Account'}
+            {isSubmitting ? 'Chargement...' : isSignIn ? 'Sign In' : 'Create Account'}
           </button>
         </form>
 

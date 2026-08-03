@@ -1,16 +1,17 @@
 import { Message } from './message.model.js';
 
-export const getChannelMessages = async (req, res) => {
+export const getChannelMessages = async (req, res, next) => {
   try {
     const { channelId } = req.params;
 
+    // Les 100 messages les plus récents, remis dans l'ordre chronologique
+    // pour l'affichage (sort desc + limit, puis reverse)
     const messages = await Message.find({ channelId })
-      .sort({ createdAt: 1 }) // Ordre chronologique
-      .limit(50);
+      .sort({ createdAt: -1 })
+      .limit(100);
 
-    return res.json(messages);
+    res.json(messages.reverse());
   } catch (error) {
-    console.error('Erreur récuperation messages:', error);
-    return res.status(500).json({ error: 'Impossible de récupérer les messages' });
+    next(error);
   }
 };

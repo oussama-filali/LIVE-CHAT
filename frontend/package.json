@@ -14,7 +14,7 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.23.1",
     "socket.io-client": "^4.7.5",
-    "zustand": "^4.5.2"
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
