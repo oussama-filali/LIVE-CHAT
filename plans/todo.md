@@ -35,34 +35,42 @@
 
 ## Développement — fichier par fichier, par domaine
 
+> Rappel archi : on est passés à une organisation **par module**
+> (`backend/src/modules/<domaine>/`) au lieu de dossiers par type. Le transverse
+> (utilisé par plusieurs modules) reste dans `middlewares/` et `config/`.
+
 ### A. Auth / Utilisateurs / Serveurs / Canaux — `dev-oussama`
-- [ ] `backend/src/services/auth.service.js` (hash bcrypt, génération/vérification JWT
-      access + refresh) — pure logique métier, aucune dépendance Express
-- [ ] `backend/src/controllers/auth.controller.js` + `routes/auth.routes.js`
-      (register, login, refresh, logout) + validation Zod des payloads —
-      le controller appelle Prisma (`prisma.user.*`) directement pour lire/écrire,
-      et délègue le hash/JWT à `auth.service.js`
-- [ ] `backend/src/controllers/server.controller.js` + `routes/server.routes.js`
-      (CRUD via Prisma directement, pas de couche intermédiaire)
-- [ ] `backend/src/controllers/channel.controller.js` + `routes/channel.routes.js`
-      (CRUD via Prisma directement)
-- [ ] `backend/src/middlewares/rbac.middleware.js` (vérifie `Membership.role` avant
-      une action sensible : créer un canal, changer un rôle, etc.)
-- [ ] Brancher les routes dans `backend/src/server.js` (lignes actuellement commentées)
+- [x] `backend/src/modules/auth/auth.service.js` (hash bcrypt, génération/vérification
+      JWT access + refresh) — pure logique métier, JWT durci (HS256, issuer, audience, type)
+- [x] `backend/src/modules/auth/auth.controller.js` + `auth.routes.js`
+      (register, login, refresh, logout) + validation Zod, cookies httpOnly
+- [x] `backend/src/modules/serv/server.controller.js` + `server.routes.js`
+      (créer serveur, join par code d'invitation, lister ses serveurs, créer salon,
+      changer rôle) — fait par Alexis
+- [x] `backend/src/middlewares/rbac.middleware.js` (`requireRole(...)` : vérifie
+      `Membership.role` avant une action sensible) — branché sur create-channel
+      (OWNER/ADMIN) et change-role (OWNER)
+- [x] Brancher les routes dans `backend/src/server.js` (`/api/auth`, `/api/servers`)
+- [ ] Contrôle d'accès en **lecture** : un membre ne doit voir que les salons/serveurs
+      dont il fait partie (cahier des charges : "un membre n'accède qu'à ses serveurs")
+- [ ] Profil utilisateur : avatar + statut personnalisé (clin d'œil MSN)
 
-### B. Chat temps réel — `dev-<membre2>`
-- [ ] Modèle Mongoose `Message` (channelId, authorId, content, attachments, edited, createdAt)
-- [ ] Authentifier le socket `/chat` (vérifier le JWT au handshake, pas seulement à la connexion)
-- [ ] Compléter `backend/src/sockets/chat.js` : persister le message via le modèle
-      Mongoose `Message` directement, puis diffuser à la room correspondante
-- [ ] Route REST `GET /channels/:id/messages` (historique paginé, `Message.find()` direct)
+### B. Chat temps réel — `dev-Alexis`
+- [x] Modèle Mongoose `Message` (`modules/messages/message.model.js`)
+- [x] Authentifier le socket `/chat` (`requireSocketAuth`, JWT vérifié au handshake)
+- [x] `sockets/chat.js` : persistance du message (Mongo) + diffusion à la room
+- [x] Route REST `GET /api/messages/channel/:channelId` (historique) — ⚠️ écrite mais
+      **pas encore montée dans `server.js`** ni protégée par `requireAuth`
+- [ ] Indicateur de frappe (`typing` / `user-typing`)
+- [ ] Messages privés (DM) + notifications non-lus
 
-### C. Voix / WebRTC + présence — `dev-<membre3>`
-- [ ] Authentifier le socket `/voice`
-- [ ] Présence Redis (set des utilisateurs connectés par canal vocal)
-- [ ] Compléter la signalisation WebRTC (offer/answer/ICE candidates) dans
-      `backend/src/sockets/webrtc.js`
-- [ ] Nettoyage à la déconnexion (retrait Redis + notification aux autres participants)
+### C. Voix / WebRTC + présence — `dev-Alexis`
+- [x] Authentifier le socket `/voice` (`requireSocketAuth`)
+- [x] Présence Redis (`services/presence.service.js` : online/busy/offline, limite d'onglets)
+- [x] Signalisation WebRTC de base (offer/answer/ICE) dans `sockets/webrtc.js`
+- [x] Nettoyage à la déconnexion (retrait Redis + notif aux membres du serveur)
+- [ ] Appel 1-to-1 audio/vidéo complet côté front + contrôles (mute/cam/raccrocher)
+- [ ] Salon vocal de groupe en mesh (≤ 3 participants)
 
 ### D. Frontend — `dev-<membre4>`
 - [ ] Routing (`react-router-dom`) : `/login`, `/register`, `/servers/:id/channels/:id`
@@ -78,6 +86,11 @@
 - [ ] Remplir `docs/socket-events.md` (contrat d'événements socket partagé entre les 4)
 - [ ] Générer les vrais schémas `docs/mcd.png`, `docs/architecture.png`,
       `docs/webrtc-sequence.png` à partir des sources Mermaid fournies
+- [ ] Détracker `frontend/node_modules/` (committé par erreur avant le `.gitignore`) :
+      `git rm -r --cached frontend/node_modules` — à faire en accord avec l'équipe
+- [ ] Supprimer le dossier fantôme `backend/backend/` (créé par un `npm` mal placé)
+- [ ] Livrables cahier des charges encore à produire : doc Swagger, collection Postman,
+      `.env.example` complet, plan de tests, guide de dépannage WebSocket/WebRTC
 
 ## Règles de code à respecter (rappel)
 
