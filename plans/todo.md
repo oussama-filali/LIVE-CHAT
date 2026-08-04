@@ -72,7 +72,7 @@
 - [ ] Appel 1-to-1 audio/vidéo complet côté front + contrôles (mute/cam/raccrocher)
 - [ ] Salon vocal de groupe en mesh (≤ 3 participants)
 
-### D. Frontend — `dev-<membre4>`
+### D. Frontend — `dev-Mahela`
 - [ ] Routing (`react-router-dom`) : `/login`, `/register`, `/servers/:id/channels/:id`
 - [ ] Store Zustand : état auth, serveur/canal courant, messages
 - [ ] Pages Login / Register (formulaires + appel API backend)
