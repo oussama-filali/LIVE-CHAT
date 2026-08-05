@@ -19,6 +19,7 @@ model User {
 
   serversOwned Server[]     @relation("ServerOwner")
   memberships  Membership[]
+  conversations ConversationParticipant[]
 }
 
 model Server {
@@ -67,4 +68,24 @@ model Membership {
   server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
 
   @@unique([userId, serverId])
+}
+
+model Conversation {
+  id           String                    @id @default(uuid())
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  participants ConversationParticipant[]
+}
+
+model ConversationParticipant {
+  id             String        @id @default(uuid())
+  conversationId String
+  userId         String
+  isVisible      Boolean       @default(true)
+  lastDeletedAt  DateTime?
+
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
 }

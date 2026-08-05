@@ -1,9 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, MessageSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 
 export default function Auth() {
+  const navigate = useNavigate();
+  const { login, register, isAuthenticated, error: authError } = useAuthStore();
+
   const [isSignIn, setIsSignIn] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [localError, setLocalError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -11,16 +18,32 @@ export default function Auth() {
     username: '',
   });
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSignIn) {
-      console.log('Connexion :', { email: formData.email, password: formData.password });
-    } else {
-      console.log('Inscription :', formData);
+    setLocalError('');
+    setLoading(true);
+
+    try {
+      if (isSignIn) {
+        await login(formData.email, formData.password);
+      } else {
+        await register(formData.username, formData.email, formData.password);
+      }
+      navigate('/');
+    } catch (err) {
+      setLocalError(err.message || 'Une erreur est survenue');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -74,6 +97,12 @@ export default function Auth() {
 
         {/* Formulaire */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {(localError || authError) && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-xs font-medium">
+              {localError || authError}
+            </div>
+          )}
+
           {!isSignIn && (
             <div>
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
@@ -143,13 +172,14 @@ export default function Auth() {
 
           <button
             type="submit"
-            className="w-full text-white font-semibold py-3 rounded-lg transition-colors duration-200 mt-2 shadow-lg"
+            disabled={loading}
+            className="w-full text-white font-semibold py-3 rounded-lg transition-colors duration-200 mt-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ 
               backgroundColor: '#5b6cf9',
               boxShadow: '0 8px 20px -4px rgba(91, 108, 249, 0.4)' 
             }}
           >
-            {isSignIn ? 'Sign In' : 'Create Account'}
+            {loading ? 'Chargement...' : (isSignIn ? 'Sign In' : 'Create Account')}
           </button>
         </form>
 

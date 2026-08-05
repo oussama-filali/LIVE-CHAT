@@ -1,4 +1,4 @@
-import  {parse} from 'cookie';
+import { parseCookie } from 'cookie';
 import { verifyAccessToken } from '../modules/auth/auth.service.js';
 
 
@@ -9,7 +9,7 @@ export const requireSocketAuth = (socket, next) => {
       return next(new Error('Authentification requise : Aucun cookie trouvé'));
     }
 
-    const cookies = parse(cookieHeader);
+    const cookies = parseCookie(cookieHeader);
     const token = cookies.accessToken;
 
     if (!token) {

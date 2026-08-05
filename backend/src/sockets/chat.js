@@ -1,4 +1,5 @@
 import { Message } from '../modules/messages/message.model.js';
+import { PrivateMessage } from '../modules/messages/privateMessage.model.js';
 import { requireSocketAuth } from '../middlewares/socketAuth.middleware.js';
 import { setUserChatSocket, removeUserChatSocket, pingPresence } from '../services/presence.service.js';
 import { prisma } from '../config/postgres.js';
@@ -12,6 +13,10 @@ export const setupChatSocket = (io) => {
   chatNamespace.on('connection', async (socket) => {
     const userId = socket.user.sub;
     console.log(`[Chat] Utilisateur connecté : ${userId} (Socket: ${socket.id})`);
+
+    // Rejoindre la room personnelle unique pour les messages privés
+    socket.join(`user:${userId}`);
+    console.log(`[Chat] ${userId} a rejoint sa room personnelle (user:${userId})`);
 
     // --- 1. Rejoindre les Rooms des serveurs pour le Broadcast (Scalabilité) ---
     // Plutôt que d'émettre à tout le monde, l'utilisateur rejoint des rooms
@@ -76,6 +81,66 @@ export const setupChatSocket = (io) => {
       } catch (error) {
         console.error('[Chat] Erreur enregistrement message :', error);
         socket.emit('error-message', { error: 'Échec de l\'envoi du message' });
+      }
+    });
+
+    // Gérer l'envoi de messages privés (supporte les variantes camelCase et kebab-case)
+    const handleSendPrivateMessage = async (data) => {
+      const { conversationId, recipientId, content } = data;
+
+      if (!conversationId || !recipientId || !content) {
+        socket.emit('error-message', { error: 'Données insuffisantes pour envoyer le message privé' });
+        return;
+      }
+
+      try {
+        const sender = await prisma.user.findUnique({ where: { id: userId } });
+        const senderName = sender?.username || 'Inconnu';
+
+        // 1. Enregistrer dans MongoDB
+        const newMessage = await PrivateMessage.create({
+          conversationId,
+          senderId: userId,
+          senderName,
+          content
+        });
+
+        // 2. Réactiver la visibilité de la conversation pour les deux participants (Prisma)
+        await prisma.conversationParticipant.updateMany({
+          where: {
+            conversationId,
+            userId: { in: [userId, recipientId] }
+          },
+          data: {
+            isVisible: true
+          }
+        });
+
+        // 3. Diffuser le message aux deux participants via leurs rooms personnelles
+        chatNamespace.to(`user:${userId}`).emit('receive_private_message', newMessage);
+        chatNamespace.to(`user:${recipientId}`).emit('receive_private_message', newMessage);
+      } catch (error) {
+        console.error('[Chat] Erreur envoi message privé :', error);
+        socket.emit('error-message', { error: 'Échec de l\'envoi du message privé' });
+      }
+    };
+
+    socket.on('send_private_message', handleSendPrivateMessage);
+    socket.on('send-private-message', handleSendPrivateMessage);
+
+    // Gérer l'état de saisie (typing)
+    socket.on('typing', (data) => {
+      const { conversationId, recipientId } = data;
+      if (conversationId && recipientId) {
+        chatNamespace.to(`user:${recipientId}`).emit('user_typing', { conversationId, userId });
+      }
+    });
+
+    // Gérer l'arrêt de la saisie (stop_typing)
+    socket.on('stop_typing', (data) => {
+      const { conversationId, recipientId } = data;
+      if (conversationId && recipientId) {
+        chatNamespace.to(`user:${recipientId}`).emit('user_stop_typing', { conversationId, userId });
       }
     });
 

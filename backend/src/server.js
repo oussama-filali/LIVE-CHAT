@@ -20,6 +20,7 @@ import { setupWebRTCSocket } from './sockets/webrtc.js';
 // Import Routes
 import authRoutes from './modules/auth/auth.routes.js';
 import serverRoutes from './modules/serv/server.routes.js';
+import conversationRoutes from './modules/conversations/conversation.routes.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -49,6 +50,7 @@ app.use(globalLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/servers', serverRoutes);
+app.use('/api/conversations', conversationRoutes);
 // app.use('/api/channels', channelsRoutes);
 
 // Catch 404
