@@ -1,73 +1,68 @@
 import { create } from 'zustand';
-import api from '../services/api';
+import {
+  registerRequest,
+  loginRequest,
+  logoutRequest,
+  meRequest,
+} from '../services/auth.service';
 
-export const useAuthStore = create((set, get) => ({
-  user: JSON.parse(localStorage.getItem('chat_user')) || null,
-  isAuthenticated: !!localStorage.getItem('chat_user'),
-  isChecking: true,
+// Le back renvoie soit { error: "message" } soit { error: [ {message}, ... ] }
+// (erreurs Zod) selon le cas. On uniformise pour l'affichage.
+const extractErrorMessage = (err) => {
+  const data = err.data?.error;
+  if (Array.isArray(data)) return data.map((e) => e.message).join(', ');
+  return data || err.message || 'Une erreur est survenue';
+};
+
+export const useAuthStore = create((set) => ({
+  user: null,
+  isAuthenticated: false,
+  isLoading: true, // true tant qu'on n'a pas vérifié la session au chargement
   error: null,
 
-  login: async (email, password) => {
+  register: async (formData) => {
     set({ error: null });
     try {
-      const response = await api.post('/api/auth/login', { email, password });
-      const user = response.data;
-      localStorage.setItem('chat_user', JSON.stringify(user));
-      set({ user, isAuthenticated: true, error: null });
-      return user;
+      const user = await registerRequest(formData);
+      set({ user, isAuthenticated: true });
+      return { success: true };
     } catch (err) {
-      const errMsg = err.response?.data?.error || 'Échec de la connexion';
-      set({ error: errMsg });
-      throw new Error(errMsg);
+      const message = extractErrorMessage(err);
+      set({ error: message });
+      return { success: false, error: message };
     }
   },
 
-  register: async (username, email, password) => {
+  login: async (formData) => {
     set({ error: null });
     try {
-      const response = await api.post('/api/auth/register', { username, email, password });
-      const user = response.data;
-      localStorage.setItem('chat_user', JSON.stringify(user));
-      set({ user, isAuthenticated: true, error: null });
-      return user;
+      const user = await loginRequest(formData);
+      set({ user, isAuthenticated: true });
+      return { success: true };
     } catch (err) {
-      // Si la validation Zod échoue, le backend renvoie un tableau d'erreurs
-      const errData = err.response?.data?.error;
-      const errMsg = Array.isArray(errData) 
-        ? errData.map(e => e.message).join(', ') 
-        : (errData || 'Échec de l\'inscription');
-      set({ error: errMsg });
-      throw new Error(errMsg);
+      const message = extractErrorMessage(err);
+      set({ error: message });
+      return { success: false, error: message };
     }
   },
 
   logout: async () => {
     try {
-      await api.post('/api/auth/logout');
-    } catch (err) {
-      console.error('Erreur lors de la déconnexion backend', err);
+      await logoutRequest();
     } finally {
-      localStorage.removeItem('chat_user');
-      set({ user: null, isAuthenticated: false, error: null });
+      set({ user: null, isAuthenticated: false });
     }
   },
 
+  // Appelé une fois au montage de l'app pour restaurer la session
+  // si un cookie accessToken valide existe déjà
   checkAuth: async () => {
-    set({ isChecking: true });
-    const localUser = localStorage.getItem('chat_user');
-    if (!localUser) {
-      set({ user: null, isAuthenticated: false, isChecking: false });
-      return;
-    }
-
+    set({ isLoading: true });
     try {
-      // Appeler le refresh pour vérifier que la session est toujours valide et renouveler l'accessToken
-      await api.post('/api/auth/refresh');
-      set({ user: JSON.parse(localUser), isAuthenticated: true, isChecking: false });
-    } catch (err) {
-      console.warn('Session expirée ou invalide lors du rafraîchissement', err);
-      localStorage.removeItem('chat_user');
-      set({ user: null, isAuthenticated: false, isChecking: false });
+      const user = await meRequest();
+      set({ user, isAuthenticated: true, isLoading: false });
+    } catch {
+      set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },
 }));

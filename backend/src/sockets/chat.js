@@ -7,21 +7,43 @@ import { prisma } from '../config/postgres.js';
 export const setupChatSocket = (io) => {
   const chatNamespace = io.of('/chat');
 
-  // Authentifier le namespace avec le middleware qu'on vient de créer
+  // Authentifier le namespace avec le middleware qu'on a créé
   chatNamespace.use(requireSocketAuth);
+
+  // Présence locale par salon (duplication de l'existant de l'ami pour compatibilité)
+  const presenceByChannel = new Map();
+
+  const broadcastPresence = (channelId) => {
+    const users = Array.from(presenceByChannel.get(channelId)?.values() || []);
+    chatNamespace.to(channelId).emit('presence-update', { channelId, users });
+  };
 
   chatNamespace.on('connection', async (socket) => {
     const userId = socket.user.sub;
-    console.log(`[Chat] Utilisateur connecté : ${userId} (Socket: ${socket.id})`);
+
+    // Récupérer le pseudo de l'utilisateur pour compatibilité avec le code de l'ami
+    let username = 'Inconnu';
+    try {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { username: true }
+      });
+      if (dbUser) {
+        username = dbUser.username;
+      }
+    } catch (err) {
+      console.error('[Chat] Erreur récupération pseudo', err);
+    }
+
+    socket.userId = userId;
+    socket.username = username;
+
+    console.log(`[Chat] Utilisateur connecté : ${userId} (Socket: ${socket.id}, Pseudo: ${username})`);
 
     // Rejoindre la room personnelle unique pour les messages privés
     socket.join(`user:${userId}`);
-    console.log(`[Chat] ${userId} a rejoint sa room personnelle (user:${userId})`);
 
     // --- 1. Rejoindre les Rooms des serveurs pour le Broadcast (Scalabilité) ---
-    // Plutôt que d'émettre à tout le monde, l'utilisateur rejoint des rooms
-    // correspondant à ses serveurs. Ainsi, il recevra la présence de ses amis,
-    // et diffusera sa présence uniquement à ses amis.
     try {
       const memberships = await prisma.membership.findMany({ where: { userId } });
       memberships.forEach(m => {
@@ -31,7 +53,7 @@ export const setupChatSocket = (io) => {
       console.error('[Chat] Erreur récupération memberships pour Socket', err);
     }
 
-    // --- 2. Mise à jour de la Présence (En Ligne) ---
+    // --- 2. Mise à jour de la Présence globale (En Ligne) ---
     const presence = await setUserChatSocket(userId, socket.id);
     
     if (presence.error === 'MAX_TABS_REACHED') {
@@ -43,7 +65,6 @@ export const setupChatSocket = (io) => {
 
     if (presence.changed) {
       // Diffuser le changement de statut (il vient de passer en ligne)
-      // On diffuse uniquement aux rooms "server:xxx" auxquelles il appartient
       socket.rooms.forEach(room => {
         if (room.startsWith('server:')) {
           chatNamespace.to(room).emit('presence-update', { userId, status: presence.status });
@@ -53,38 +74,54 @@ export const setupChatSocket = (io) => {
 
     // Rejoindre un salon spécifique
     socket.on('join-channel', (channelId) => {
+      if (!channelId) return;
+
       socket.join(channelId);
-      console.log(`[Chat] ${userId} a rejoint ${channelId}`);
+      socket.data.channelId = channelId;
+
+      if (!presenceByChannel.has(channelId)) {
+        presenceByChannel.set(channelId, new Map());
+      }
+      presenceByChannel.get(channelId).set(socket.id, {
+        userId: socket.userId,
+        username: socket.username,
+      });
+
+      broadcastPresence(channelId);
+      console.log(`[Chat] ${socket.username} a rejoint ${channelId}`);
     });
 
     // Quitter un salon spécifique
     socket.on('leave-channel', (channelId) => {
+      if (!channelId) return;
+
       socket.leave(channelId);
-      console.log(`[Chat] ${userId} a quitté ${channelId}`);
+      presenceByChannel.get(channelId)?.delete(socket.id);
+      broadcastPresence(channelId);
+      console.log(`[Chat] ${socket.username} a quitté ${channelId}`);
     });
 
-    // Sauvegarde + Diffusion du message
-    socket.on('send-message', async (data) => {
-      const { channelId, content } = data;
-      // Bonne pratique : Prendre l'ID sécurisé depuis le token, pas depuis les data client
+    // Sauvegarde + Diffusion du message du salon public
+    socket.on('send-message', async ({ channelId, content }) => {
+      if (!channelId || !content?.trim()) return;
+
       try {
-        const user = await prisma.user.findUnique({ where: { id: userId } });
         const newMessage = await Message.create({
           channelId,
-          senderId: userId,
-          senderName: user?.username || 'Inconnu',
-          content
+          senderId: socket.userId,
+          senderName: socket.username,
+          content: content.trim(),
         });
 
         // Diffusion à toute la room du salon
         chatNamespace.to(channelId).emit('receive-message', newMessage);
       } catch (error) {
         console.error('[Chat] Erreur enregistrement message :', error);
-        socket.emit('error-message', { error: 'Échec de l\'envoi du message' });
+        socket.emit('error-message', { error: "Échec de l'envoi du message" });
       }
     });
 
-    // Gérer l'envoi de messages privés (supporte les variantes camelCase et kebab-case)
+    // Gérer l'envoi de messages privés
     const handleSendPrivateMessage = async (data) => {
       const { conversationId, recipientId, content } = data;
 
@@ -94,18 +131,14 @@ export const setupChatSocket = (io) => {
       }
 
       try {
-        const sender = await prisma.user.findUnique({ where: { id: userId } });
-        const senderName = sender?.username || 'Inconnu';
-
-        // 1. Enregistrer dans MongoDB
         const newMessage = await PrivateMessage.create({
           conversationId,
           senderId: userId,
-          senderName,
+          senderName: username,
           content
         });
 
-        // 2. Réactiver la visibilité de la conversation pour les deux participants (Prisma)
+        // Réactiver la visibilité de la conversation pour les deux participants
         await prisma.conversationParticipant.updateMany({
           where: {
             conversationId,
@@ -116,7 +149,7 @@ export const setupChatSocket = (io) => {
           }
         });
 
-        // 3. Diffuser le message aux deux participants via leurs rooms personnelles
+        // Diffuser le message aux deux participants via leurs rooms personnelles
         chatNamespace.to(`user:${userId}`).emit('receive_private_message', newMessage);
         chatNamespace.to(`user:${recipientId}`).emit('receive_private_message', newMessage);
       } catch (error) {
@@ -150,12 +183,9 @@ export const setupChatSocket = (io) => {
     });
 
     // L'événement `disconnecting` se lance juste AVANT la déconnexion
-    // Cela permet d'avoir encore accès à `socket.rooms` pour prévenir ses serveurs
     socket.on('disconnecting', async () => {
       const roomsToNotify = Array.from(socket.rooms).filter(r => r.startsWith('server:'));
       
-      // --- Mise à jour de la Présence (Absent) ---
-      // Retire ce socket. Si c'est son dernier socket ouvert, il passe 'offline'.
       const presence = await removeUserChatSocket(userId, socket.id);
       
       if (presence.changed) {
@@ -166,6 +196,11 @@ export const setupChatSocket = (io) => {
     });
 
     socket.on('disconnect', () => {
+      const channelId = socket.data.channelId;
+      if (channelId) {
+        presenceByChannel.get(channelId)?.delete(socket.id);
+        broadcastPresence(channelId);
+      }
       console.log(`[Chat] Utilisateur déconnecté : ${userId} (Socket: ${socket.id})`);
     });
   });

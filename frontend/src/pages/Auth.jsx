@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, MessageSquare } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 export default function Auth() {
@@ -9,8 +9,8 @@ export default function Auth() {
 
   const [isSignIn, setIsSignIn] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [localError, setLocalError] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -31,19 +31,16 @@ export default function Auth() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLocalError('');
-    setLoading(true);
+    setIsSubmitting(true);
 
-    try {
-      if (isSignIn) {
-        await login(formData.email, formData.password);
-      } else {
-        await register(formData.username, formData.email, formData.password);
-      }
+    const result = isSignIn
+      ? await login({ email: formData.email, password: formData.password })
+      : await register(formData);
+
+    setIsSubmitting(false);
+
+    if (result.success) {
       navigate('/');
-    } catch (err) {
-      setLocalError(err.message || 'Une erreur est survenue');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -172,14 +169,14 @@ export default function Auth() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full text-white font-semibold py-3 rounded-lg transition-colors duration-200 mt-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSubmitting}
+            className="w-full text-white font-semibold py-3 rounded-lg transition-colors duration-200 mt-2 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
             style={{ 
               backgroundColor: '#5b6cf9',
               boxShadow: '0 8px 20px -4px rgba(91, 108, 249, 0.4)' 
             }}
           >
-            {loading ? 'Chargement...' : (isSignIn ? 'Sign In' : 'Create Account')}
+            {isSubmitting ? 'Chargement...' : isSignIn ? 'Sign In' : 'Create Account'}
           </button>
         </form>
 

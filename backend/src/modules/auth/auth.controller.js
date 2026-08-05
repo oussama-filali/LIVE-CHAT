@@ -50,12 +50,14 @@ const setAuthCookies = (res, userId) => {
     });
 };
  // register
-export const register = async (req, res) => {
+export const register = async (req, res, next) => {
     const parsed = registerSchema.safeParse(req.body);
 
     if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors });
     }
+
+    try {
         const { username, email, password } = parsed.data;
 
         const existingUser = await prisma.user.findFirst({
@@ -78,31 +80,37 @@ export const register = async (req, res) => {
 
         setAuthCookies(res, user.id);
         res.status(201).json({ id: user.id, username: user.username, email: user.email });
-
+    } catch (err) {
+        next(err);
     }
+}
 
-// login
-export const login = async (req, res) => {
+// login 
+export const login = async (req, res, next) => {
     const parsed = loginSchema.safeParse(req.body);
 
     if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors });
     }
 
-    const { email, password } = parsed.data;
+    try {
+        const { email, password } = parsed.data;
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-        return res.status(401).json({ error: 'une autre fois peut inshallah' });
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            return res.status(401).json({ error: 'une autre fois peut inshallah' });
+        }
+
+        const validePassword = await comparePassword(password, user.passwordHash);
+        if (!validePassword) {
+            return res.status(401).json({ error: 'une autre fois peut inshallah' });
+        }
+
+        setAuthCookies(res, user.id);
+        res.status(200).json({ id: user.id, username: user.username, email: user.email });
+    } catch (err) {
+        next(err);
     }
-
-    const validePassword = await comparePassword(password, user.passwordHash);
-    if (!validePassword) {
-        return res.status(401).json({ error: 'une autre fois peut inshallah' });
-    }
-
-    setAuthCookies(res, user.id);
-    res.status(200).json({ id: user.id, username: user.username, email: user.email });
 };
 
 // refresh token
@@ -128,4 +136,24 @@ export const logout = (req, res) => {
     res.clearCookie('accessToken', cookieOptions);
     res.clearCookie('refreshToken', cookieOptions);
     res.status(200).json({ message: 'Déconnexion réussie' });
+};
+
+// me : renvoie l'utilisateur courant à partir du cookie (utilisé par le front
+// au chargement de l'app pour savoir si une session est active)
+export const me = async (req, res, next) => {
+    try {
+        // requireAuth pose le payload décodé du JWT dans req.user (sub = userId)
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.sub },
+            select: { id: true, username: true, email: true }
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'Utilisateur introuvable' });
+        }
+
+        res.status(200).json(user);
+    } catch (err) {
+        next(err);
+    }
 };
