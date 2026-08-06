@@ -1,6 +1,6 @@
 // Base URL du backend. En dev, appel direct sur le port du serveur Express.
 // Passe par VITE_API_URL si tu ajoutes un .env plus tard.
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/auth';
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3000') + '/api/auth';
 
 // Wrapper fetch commun : envoie les cookies (credentials: 'include'),
 // parse le JSON, et transforme une réponse non-ok en erreur exploitable

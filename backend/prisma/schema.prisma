@@ -20,6 +20,8 @@ model User {
   serversOwned Server[]     @relation("ServerOwner")
   memberships  Membership[]
   conversations ConversationParticipant[]
+  invitationsSent     ServerInvitation[]        @relation("InvitationSender")
+  invitationsReceived ServerInvitation[]        @relation("InvitationReceiver")
 }
 
 model Server {
@@ -33,6 +35,7 @@ model Server {
   owner       User         @relation("ServerOwner", fields: [ownerId], references: [id])
   channels    Channel[]
   memberships Membership[]
+  invitations ServerInvitation[]
 }
 
 enum ChannelType {
@@ -88,4 +91,19 @@ model ConversationParticipant {
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, userId])
+}
+
+model ServerInvitation {
+  id         String   @id @default(uuid())
+  serverId   String
+  senderId   String
+  receiverId String
+  status     String   @default("PENDING") // PENDING, ACCEPTED, DECLINED
+  createdAt  DateTime @default(now())
+
+  server     Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  sender     User     @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("InvitationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, receiverId])
 }

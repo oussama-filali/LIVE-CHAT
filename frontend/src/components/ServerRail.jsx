@@ -2,18 +2,27 @@ import { MessageSquare, Plus } from 'lucide-react';
 import { colorForName, initialsForName } from '../utils/avatar';
 
 export default function ServerRail({ servers, activeServerId, onSelectServer, onAddServer }) {
+  const isMeActive = activeServerId === '@me';
+
   return (
     <div
       className="w-[72px] shrink-0 h-full flex flex-col items-center py-3 gap-2 overflow-y-auto"
       style={{ backgroundColor: '#0d0e12' }}
     >
-      <div
-        className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-        style={{ backgroundColor: '#5b6cf9' }}
-        title="Live Chat"
+      <button
+        key="dm-rail-button"
+        type="button"
+        onClick={() => onSelectServer('@me')}
+        className="w-12 h-12 flex items-center justify-center shrink-0 transition-all duration-200 hover:rounded-xl"
+        style={{
+          backgroundColor: isMeActive ? '#5b6cf9' : '#16181d',
+          borderRadius: isMeActive ? '16px' : '24px',
+          color: '#ffffff',
+        }}
+        title="Messages Privés"
       >
         <MessageSquare className="w-6 h-6 text-white fill-current" />
-      </div>
+      </button>
 
       <div className="w-8 h-[2px] rounded-full shrink-0" style={{ backgroundColor: '#2b2f38' }} />
 

@@ -145,3 +145,152 @@ export const updateMemberRole = async (req, res, next) => {
     next(error);
   }
 };
+
+// 5. Envoyer une invitation de serveur
+export const sendServerInvitation = async (req, res, next) => {
+  try {
+    const senderId = req.user.sub;
+    const { serverId, receiverId } = req.body;
+
+    if (!serverId || !receiverId) {
+      return res.status(400).json({ error: 'serverId et receiverId sont requis' });
+    }
+
+    // Vérifier que l'expéditeur fait partie du serveur
+    const isMember = await prisma.membership.findUnique({
+      where: {
+        userId_serverId: {
+          userId: senderId,
+          serverId,
+        },
+      },
+    });
+
+    if (!isMember) {
+      return res.status(403).json({ error: 'Vous ne faites pas partie de ce serveur pour y inviter quelqu\'un' });
+    }
+
+    // Vérifier que le destinataire n'est pas déjà membre
+    const isAlreadyMember = await prisma.membership.findUnique({
+      where: {
+        userId_serverId: {
+          userId: receiverId,
+          serverId,
+        },
+      },
+    });
+
+    if (isAlreadyMember) {
+      return res.status(409).json({ error: 'Cet utilisateur est déjà membre de ce serveur' });
+    }
+
+    // Créer ou récupérer l'invitation existante si elle est PENDING
+    const invitation = await prisma.serverInvitation.upsert({
+      where: {
+        serverId_receiverId: {
+          serverId,
+          receiverId,
+        },
+      },
+      update: {
+        senderId,
+        status: 'PENDING',
+        createdAt: new Date(),
+      },
+      create: {
+        serverId,
+        senderId,
+        receiverId,
+        status: 'PENDING',
+      },
+    });
+
+    res.status(201).json(invitation);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 6. Récupérer les invitations en attente pour l'utilisateur connecté
+export const getPendingInvitations = async (req, res, next) => {
+  try {
+    const userId = req.user.sub;
+
+    const invitations = await prisma.serverInvitation.findMany({
+      where: {
+        receiverId: userId,
+        status: 'PENDING',
+      },
+      include: {
+        server: {
+          include: {
+            channels: true,
+          },
+        },
+        sender: {
+          select: {
+            username: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json(invitations);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 7. Accepter ou décliner une invitation de serveur
+export const respondToInvitation = async (req, res, next) => {
+  try {
+    const userId = req.user.sub;
+    const { id } = req.params;
+    const { accept } = req.body; // true ou false
+
+    if (accept === undefined) {
+      return res.status(400).json({ error: 'Le champ accept est requis' });
+    }
+
+    const invitation = await prisma.serverInvitation.findUnique({
+      where: { id },
+    });
+
+    if (!invitation || invitation.receiverId !== userId) {
+      return res.status(404).json({ error: 'Invitation introuvable ou non autorisée' });
+    }
+
+    if (invitation.status !== 'PENDING') {
+      return res.status(400).json({ error: 'Cette invitation a déjà été traitée' });
+    }
+
+    if (accept) {
+      // 1. Mettre à jour l'invitation
+      await prisma.serverInvitation.update({
+        where: { id },
+        data: { status: 'ACCEPTED' },
+      });
+
+      // 2. Ajouter aux membres
+      await prisma.membership.create({
+        data: {
+          userId,
+          serverId: invitation.serverId,
+          role: 'MEMBER',
+        },
+      });
+
+      res.status(200).json({ status: 'ACCEPTED', message: 'Invitation acceptée !' });
+    } else {
+      await prisma.serverInvitation.update({
+        where: { id },
+        data: { status: 'DECLINED' },
+      });
+
+      res.status(200).json({ status: 'DECLINED', message: 'Invitation déclinée.' });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
