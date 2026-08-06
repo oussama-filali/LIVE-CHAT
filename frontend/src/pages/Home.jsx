@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import ServerRail from '../components/ServerRail';
 import ChannelSidebar from '../components/ChannelSidebar';
 import ChatArea from '../components/ChatArea';
+import VoiceChannelPanel from '../components/VoiceChannelPanel';
 import MemberList from '../components/MemberList';
 import CreateServerModal from '../components/CreateServerModal';
 import { useServerStore } from '../store/serverStore';
@@ -42,10 +43,6 @@ export default function Home() {
     }
   }, [activeChannelId, joinChannel]);
 
-  // Le contenu principal change selon l'état (chargement / aucun serveur / app),
-  // mais la modale est rendue une seule fois, à un endroit stable, en dehors
-  // de ce switch : comme ça React ne la démonte/remonte jamais entre-temps,
-  // et son état interne (ex: le code d'invitation affiché) n'est pas perdu.
   let content;
 
   if (isLoading) {
@@ -87,11 +84,19 @@ export default function Home() {
           onSelectChannel={selectChannel}
           onCreateChannel={createChannel}
         />
-        <ChatArea
-          channelName={activeChannel?.name || ''}
-          messages={channelMessages}
-          onSendMessage={(text) => sendMessage(activeChannelId, text)}
-        />
+        {activeChannel?.type === 'VOICE' || activeChannel?.type === 'voice' ? (
+          <VoiceChannelPanel
+            channelId={activeChannelId}
+            channelName={activeChannel?.name || 'Salon vocal'}
+            serverId={activeServerId}
+          />
+        ) : (
+          <ChatArea
+            channelName={activeChannel?.name || ''}
+            messages={channelMessages}
+            onSendMessage={(text) => sendMessage(activeChannelId, text)}
+          />
+        )}
         <MemberList onlineUsers={onlineUsers} />
       </div>
     );
