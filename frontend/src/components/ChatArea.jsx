@@ -1,16 +1,53 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Hash, Search, Send, Plus } from 'lucide-react';
 import { colorForName, initialsForName } from '../utils/avatar';
 
-export default function ChatArea({ channelName, messages, onSendMessage }) {
+export default function ChatArea({ channelName, messages, onSendMessage, typingUsers, onTyping, onStopTyping }) {
   const [draft, setDraft] = useState('');
+  const typingTimeoutRef = useRef(null);
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setDraft(val);
+
+    if (onTyping) {
+      onTyping();
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      if (onStopTyping) {
+        onStopTyping();
+      }
+    }, 2000);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const text = draft.trim();
     if (!text) return;
+
+    if (onStopTyping) {
+      onStopTyping();
+    }
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
     onSendMessage(text);
     setDraft('');
+  };
+
+  const handleBlur = () => {
+    if (onStopTyping) {
+      onStopTyping();
+    }
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
   };
 
   return (
@@ -68,6 +105,21 @@ export default function ChatArea({ channelName, messages, onSendMessage }) {
         )}
       </div>
 
+      {/* Indicateur de saisie */}
+      {typingUsers && typingUsers.length > 0 && (
+        <div className="px-4 pb-1 text-xs text-gray-400 italic flex items-center gap-1.5 text-left">
+          <div className="flex gap-0.5">
+            <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
+          <span>
+            {typingUsers.map((u) => u.username).join(', ')} 
+            {typingUsers.length === 1 ? " est en train d'écrire..." : " sont en train d'écrire..."}
+          </span>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="px-4 pb-4">
         <div className="flex items-center gap-2 rounded-lg px-3 py-2.5" style={{ backgroundColor: '#2b2f38' }}>
           <button type="button" className="text-gray-400 hover:text-gray-200 transition-colors shrink-0">
@@ -76,7 +128,8 @@ export default function ChatArea({ channelName, messages, onSendMessage }) {
           <input
             type="text"
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={handleInputChange}
+            onBlur={handleBlur}
             placeholder={`Envoyer un message à #${channelName}`}
             className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 outline-none"
           />

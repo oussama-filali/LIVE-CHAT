@@ -49,6 +49,12 @@ app.use(cookieParser());
 // OWASP: Protection contre les attaques DDoS (basique) et brute force
 app.use(globalLimiter);
 
+// Transmettre l'instance Socket.io aux controlleurs via req.io
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/servers', serverRoutes);
 app.use('/api/conversations', conversationRoutes);

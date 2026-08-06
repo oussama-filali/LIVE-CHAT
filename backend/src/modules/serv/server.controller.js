@@ -205,7 +205,30 @@ export const sendServerInvitation = async (req, res, next) => {
       },
     });
 
-    res.status(201).json(invitation);
+    // Récupérer l'invitation complète avec les relations (serveur, salons, expéditeur)
+    const fullInvitation = await prisma.serverInvitation.findUnique({
+      where: { id: invitation.id },
+      include: {
+        server: {
+          include: {
+            channels: true,
+          },
+        },
+        sender: {
+          select: {
+            username: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Émettre l'événement temps réel via Socket.io au destinataire
+    if (req.io) {
+      req.io.of('/chat').to(`user:${receiverId}`).emit('server_invitation', fullInvitation);
+    }
+
+    res.status(201).json(fullInvitation);
   } catch (error) {
     next(error);
   }

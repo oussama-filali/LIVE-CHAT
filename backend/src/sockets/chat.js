@@ -161,19 +161,35 @@ export const setupChatSocket = (io) => {
     socket.on('send_private_message', handleSendPrivateMessage);
     socket.on('send-private-message', handleSendPrivateMessage);
 
-    // Gérer l'état de saisie (typing)
+    // Gérer l'état de saisie (typing) pour le chat privé
     socket.on('typing', (data) => {
       const { conversationId, recipientId } = data;
       if (conversationId && recipientId) {
-        chatNamespace.to(`user:${recipientId}`).emit('user_typing', { conversationId, userId });
+        chatNamespace.to(`user:${recipientId}`).emit('user_typing', { conversationId, userId, username: socket.username });
       }
     });
 
-    // Gérer l'arrêt de la saisie (stop_typing)
+    // Gérer l'arrêt de la saisie (stop_typing) pour le chat privé
     socket.on('stop_typing', (data) => {
       const { conversationId, recipientId } = data;
       if (conversationId && recipientId) {
         chatNamespace.to(`user:${recipientId}`).emit('user_stop_typing', { conversationId, userId });
+      }
+    });
+
+    // Gérer l'état de saisie (typing) pour un salon public
+    socket.on('channel_typing', (data) => {
+      const { channelId } = data;
+      if (channelId) {
+        socket.to(channelId).emit('user_typing_channel', { channelId, userId, username: socket.username });
+      }
+    });
+
+    // Gérer l'arrêt de la saisie (stop_typing) pour un salon public
+    socket.on('channel_stop_typing', (data) => {
+      const { channelId } = data;
+      if (channelId) {
+        socket.to(channelId).emit('user_stop_typing_channel', { channelId, userId });
       }
     });
 

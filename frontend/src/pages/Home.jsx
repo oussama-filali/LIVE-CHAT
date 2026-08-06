@@ -61,6 +61,9 @@ export default function Home() {
   const [isRecipientTyping, setIsRecipientTyping] = useState(false);
   const [loadingPrivateMessages, setLoadingPrivateMessages] = useState(false);
 
+  // --- États locaux pour la saisie en cours dans les salons publics ---
+  const [channelTypingUsers, setChannelTypingUsers] = useState({}); // mapping: channelId -> [{userId, username}]
+
   // --- États locaux pour le système d'invitations ---
   const [pendingInvitations, setPendingInvitations] = useState([]);
   const [showInviteDropdown, setShowInviteDropdown] = useState(false);
@@ -147,7 +150,7 @@ export default function Home() {
     const handleUserTyping = (data) => {
       const currentActive = activePrivateChatRef.current;
       if (currentActive && data.conversationId === currentActive.id && data.userId !== user?.id) {
-        setIsRecipientTyping(true);
+        setIsRecipientTyping(data.username || true);
       }
     };
 
@@ -158,14 +161,50 @@ export default function Home() {
       }
     };
 
+    const handleUserTypingChannel = (data) => {
+      const { channelId, userId, username } = data;
+      setChannelTypingUsers((prev) => {
+        const list = prev[channelId] || [];
+        if (list.some((u) => u.userId === userId)) return prev;
+        return {
+          ...prev,
+          [channelId]: [...list, { userId, username }]
+        };
+      });
+    };
+
+    const handleUserStopTypingChannel = (data) => {
+      const { channelId, userId } = data;
+      setChannelTypingUsers((prev) => {
+        const list = prev[channelId] || [];
+        return {
+          ...prev,
+          [channelId]: list.filter((u) => u.userId !== userId)
+        };
+      });
+    };
+
+    const handleServerInvitation = (invitation) => {
+      setPendingInvitations((prev) => {
+        if (prev.some((inv) => inv.id === invitation.id)) return prev;
+        return [invitation, ...prev];
+      });
+    };
+
     socket.on('receive_private_message', handleReceivePrivateMessage);
     socket.on('user_typing', handleUserTyping);
     socket.on('user_stop_typing', handleUserStopTyping);
+    socket.on('user_typing_channel', handleUserTypingChannel);
+    socket.on('user_stop_typing_channel', handleUserStopTypingChannel);
+    socket.on('server_invitation', handleServerInvitation);
 
     return () => {
       socket.off('receive_private_message', handleReceivePrivateMessage);
       socket.off('user_typing', handleUserTyping);
       socket.off('user_stop_typing', handleUserStopTyping);
+      socket.off('user_typing_channel', handleUserTypingChannel);
+      socket.off('user_stop_typing_channel', handleUserStopTypingChannel);
+      socket.off('server_invitation', handleServerInvitation);
     };
   }, [user?.id]);
 
@@ -315,6 +354,18 @@ export default function Home() {
       await logout();
       navigate('/auth');
     }
+  };
+
+  const handleChannelTyping = (channelId) => {
+    if (!channelId) return;
+    const socket = getSocket();
+    socket.emit('channel_typing', { channelId });
+  };
+
+  const handleChannelStopTyping = (channelId) => {
+    if (!channelId) return;
+    const socket = getSocket();
+    socket.emit('channel_stop_typing', { channelId });
   };
 
   // --- API Actions pour le système d'invitations ---
@@ -724,6 +775,9 @@ export default function Home() {
                     channelName={activeChannel?.name || ''}
                     messages={channelMessages}
                     onSendMessage={(text) => sendMessage(activeChannelId, text)}
+                    typingUsers={channelTypingUsers[activeChannelId] || []}
+                    onTyping={() => handleChannelTyping(activeChannelId)}
+                    onStopTyping={() => handleChannelStopTyping(activeChannelId)}
                   />
                   <MemberList onlineUsers={onlineUsers} />
                 </>
